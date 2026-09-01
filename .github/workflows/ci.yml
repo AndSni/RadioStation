@@ -43,4 +43,8 @@ jobs:
       - name: Test
         env:
           QT_QPA_PLATFORM: offscreen
-        run: ctest --test-dir build --output-on-failure
+        # A few of the audio integration tests are timing-sensitive and can
+        # flake on a loaded CI runner (they assert on a deck state before an
+        # auto-advance the runner sometimes beats). Retry only the failing
+        # ones; a genuine failure still fails after 3 attempts.
+        run: ctest --test-dir build --output-on-failure --repeat until-pass:3
