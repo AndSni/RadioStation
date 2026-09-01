@@ -7,7 +7,7 @@ chain, and direct Icecast streaming.
 
 > Version 0.1 — first public release. See [CHANGELOG.md](CHANGELOG.md).
 
-<!-- TODO: add a screenshot — docs/screenshot.png — and reference it here. -->
+![RadioStation](docs/screenshot.png)
 
 ## Features
 
