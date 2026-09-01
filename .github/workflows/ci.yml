@@ -13,13 +13,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The codebase targets a current Qt (e.g. QSortFilterProxyModel::
-      # beginFilterChange(), added in 6.9). ubuntu-24.04's distro Qt is 6.4,
-      # so pull a modern Qt via aqt instead.
+      # The codebase tracks current Qt (e.g. the paired
+      # QSortFilterProxyModel::begin/endFilterChange(Directions) API, complete
+      # only in Qt >= 6.10). ubuntu-24.04's distro Qt is 6.4, so pull a
+      # matching Qt via aqt instead.
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.9.*'
+          version: '6.11.*'
           cache: true
 
       - name: Install system dependencies
