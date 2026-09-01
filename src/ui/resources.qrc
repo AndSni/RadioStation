@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/fonts">
+        <file alias="lcd_att_phone_time_date.ttf">resources/fonts/lcd_att_phone_time_date.ttf</file>
+    </qresource>
+    <qresource prefix="/app">
+        <file alias="icon.svg">../../RadioStation_icon.svg</file>
+    </qresource>
+</RCC>

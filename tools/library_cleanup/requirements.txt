@@ -1,0 +1,15 @@
+click
+beets
+pyacoustid
+audioread
+librosa
+soundfile
+# vamp (the Vamp plugin host binding, for energy.py's BPM detection) needs
+# numpy already present at build time: `pip install --no-build-isolation vamp`.
+# Also needs the qm-vamp-plugins + kiss-fft system packages installed (e.g.
+# `dnf install qm-vamp-plugins kiss-fft` on Fedora) -- energy.py falls back
+# to a less-accurate librosa-only estimator if either is missing.
+vamp
+numpy
+mutagen
+textual

@@ -1,0 +1,23 @@
+# Build output
+build/
+build-release/
+*.o
+*.a
+*.so
+compile_commands.json
+
+# Editor / IDE / tooling
+.claude/
+.vscode/
+.idea/
+*.user
+CMakeUserPresets.json
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Python (tools/library_cleanup has its own .gitignore too)
+.venv/
+__pycache__/
+*.pyc

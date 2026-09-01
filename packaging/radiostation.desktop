@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=RadioStation
+GenericName=Radio Automation
+Comment=Radio automation and playout
+Exec=rs_app
+Icon=radiostation
+Terminal=false
+Categories=AudioVideo;Audio;
+Keywords=radio;broadcast;playout;automation;dj;streaming;
+# The executable is named rs_app, so its X11 WM_CLASS / Wayland app_id is
+# "rs_app" unless Qt's desktopFileName hint is honoured — this line lets the
+# desktop environment map that window back to this entry for the taskbar
+# icon and global-menu title regardless.
+StartupWMClass=rs_app

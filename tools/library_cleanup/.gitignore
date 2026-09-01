@@ -1,0 +1,5 @@
+.venv/
+.beets/
+test_run/
+__pycache__/
+*.pyc
