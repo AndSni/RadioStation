@@ -276,18 +276,38 @@ class CleanupTUI(App):
         Raises RuntimeError on a nonzero exit or if Stop terminated it, so
         callers can use the same try/except they'd use for an in-process
         call. Shared by both pipeline stages and the Utilities section --
-        same process shape either way."""
+        same process shape either way.
+
+        stdout is discarded (every per-file progress line it would print
+        already lands in cleanup.log via the subprocess's own FileHandler --
+        see log.py), but stderr is piped and captured instead of discarded.
+        An *unhandled* exception's traceback is written by Python's default
+        excepthook straight to stderr, bypassing the `logging` module
+        entirely -- a crash of that kind used to vanish completely (send to
+        DEVNULL, never logged anywhere), leaving "exited with status 1" as
+        the only trace. communicate() (not wait()) is required here: with
+        stderr=PIPE, nothing reads it as the process runs, so an unread pipe
+        that fills its OS buffer would deadlock the subprocess -- confirmed
+        real risk since a genuine crash's traceback plus this file's own
+        pipeline-wide try/except handlers can print more than the ~64KB
+        default pipe buffer. communicate() drains it continuously and still
+        returns promptly after Stop's terminate() call below."""
         excluded_root.mkdir(parents=True, exist_ok=True)
         process = subprocess.Popen(
             [sys.executable, str(_CLEANUP_SCRIPT), cli_command, *extra_args],
-            cwd=str(_CLEANUP_SCRIPT.parent), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            cwd=str(_CLEANUP_SCRIPT.parent), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True,
         )
         self._current_process = process
-        returncode = process.wait()
+        _, stderr_output = process.communicate()
+        returncode = process.returncode
         self._current_process = None
         if self._stop_requested.is_set():
             raise RuntimeError(f"'{cli_command}' stopped by user")
         if returncode != 0:
+            if stderr_output and stderr_output.strip():
+                from . import log as log_module
+
+                log_module.get().error(f"[{cli_command}] subprocess stderr:\n{stderr_output.rstrip()}")
             raise RuntimeError(f"'{cli_command}' exited with status {returncode} -- see cleanup.log for detail")
 
     def _run_stage_subprocess(self, stage: stages_mod.Stage, library_root: Path, excluded_root: Path) -> None:
@@ -355,11 +375,11 @@ class CleanupTUI(App):
         notification (self.notify()) -- gone the moment it auto-dismissed,
         with no record anywhere. Every failure now gets logged too, via the
         same logger every stage's own per-file progress lines already go
-        through. The subprocess's own stdout/stderr are discarded (see
-        _run_stage_subprocess), so its full traceback lives in cleanup.log
-        (written by the subprocess itself via its own logger); this line is
-        just the TUI-side marker of *which* stage failed and why the
-        subprocess was considered to have failed."""
+        through. _run_subprocess already logs the subprocess's captured
+        stderr (an unhandled exception's traceback, if that's what killed
+        it) separately just before raising; this line is just the TUI-side
+        marker of *which* stage failed and why the subprocess was
+        considered to have failed."""
         from . import log as log_module
 
         logger = log_module.get()
