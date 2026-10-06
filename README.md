@@ -5,7 +5,7 @@ music station unattended: automatic scheduling, beat-aware crossfading,
 a cart wall for jingles and sweepers, broadcast clock wheels, a mastering
 chain, and direct Icecast streaming.
 
-> Version 0.1 — first public release. See [CHANGELOG.md](CHANGELOG.md).
+> Version 0.1.1. See [CHANGELOG.md](CHANGELOG.md).
 
 ![RadioStation](docs/screenshot.png)
 
