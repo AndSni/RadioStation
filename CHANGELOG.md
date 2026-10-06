@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- **Radio Statistics panel**: the station name, current playlist (schedule
+  block) and time remaining are now compact dot-matrix displays — the same
+  style as the decks' "now playing" panel — with small "Station" /
+  "Playlist" / "Remaining" captions beneath, like the decks' "Duration".
+  Each display widens to fit its text; longer names scroll. The Station
+  Settings small-font size now applies to the ON AIR badge only.
+
 ## [0.1] – 2026-09-01
 
 First public release.

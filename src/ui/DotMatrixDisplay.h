@@ -51,6 +51,17 @@ public:
 
     void reloadMetricsFromSettings();
 
+    // Compact mode: line 1 only, at a fixed dot size that ignores the deck
+    // display settings, with a correspondingly short screen. For small
+    // readouts elsewhere (RadioStatisticsPanel's station/playlist/remaining)
+    // that want the deck's look at roughly its line-2 size. 0 = normal.
+    void setSingleLineDotSize(int dotPx);
+
+    // Width (px) that shows both lines in full, without the marquee kicking
+    // in, at the current dot metrics. For callers sizing a display to its
+    // content rather than to the deck's full-width strip.
+    int widthForText(const QString& line1, const QString& line2) const;
+
     QSize sizeHint() const override;
     QSize minimumSizeHint() const override;
 
@@ -70,6 +81,7 @@ private:
 
     int m_line1DotPx = 5; // pixels per grid dot, line 1 -- tunable via QSettings
     int m_line2DotPx = 3;
+    int m_singleLineDotPx = 0; // >0 = compact single-line mode, see setSingleLineDotSize()
 
     int m_marqueeOffset = 0; // in dot-columns
     QTimer* m_marqueeTimer = nullptr;

@@ -21,6 +21,7 @@ constexpr int kMarqueeGapCols = kCellCols * 2; // blank run before the text wrap
 constexpr int kMarqueeIntervalMs = 85; // one dot-column per tick
 constexpr int kPadX = 10;
 constexpr int kLineGapPx = 6;
+constexpr int kSingleLinePadY = 5; // compact mode: dark screen above/below the one line
 
 // Matched to the Adafruit 399 "RGB negative" LCD: a near-black screen faintly
 // tinted with the lamp colour, intense lit segments with a soft bloom, and a
@@ -191,13 +192,20 @@ void DotMatrixDisplay::reloadMetricsFromSettings()
 {
     using namespace station_settings;
     QSettings s;
-    m_line1DotPx = std::clamp(s.value(kDeckLine1FontPx, kDefaultDeckLine1FontPx).toInt(), 2, 10);
+    m_line1DotPx = m_singleLineDotPx > 0 ? m_singleLineDotPx
+                                         : std::clamp(s.value(kDeckLine1FontPx, kDefaultDeckLine1FontPx).toInt(), 2, 10);
     m_line2DotPx = std::clamp(s.value(kDeckLine2FontPx, kDefaultDeckLine2FontPx).toInt(), 2, 10);
     m_marqueeOffset = 0;
-    setMinimumHeight(kGlyphRows * (m_line1DotPx + m_line2DotPx) + kLineGapPx + 18);
+    setMinimumHeight(minimumSizeHint().height());
     updateMarqueeState();
     updateGeometry();
     update();
+}
+
+void DotMatrixDisplay::setSingleLineDotSize(int dotPx)
+{
+    m_singleLineDotPx = std::max(0, dotPx);
+    reloadMetricsFromSettings();
 }
 
 void DotMatrixDisplay::setText(const QString& text)
@@ -228,12 +236,23 @@ void DotMatrixDisplay::setLampColor(const QColor& colour)
 
 QSize DotMatrixDisplay::sizeHint() const
 {
+    if (m_singleLineDotPx > 0)
+        return QSize(180, kGlyphRows * m_line1DotPx + 2 * kSingleLinePadY);
     return QSize(400, kGlyphRows * (m_line1DotPx + m_line2DotPx) + kLineGapPx + 28);
 }
 
 QSize DotMatrixDisplay::minimumSizeHint() const
 {
+    if (m_singleLineDotPx > 0)
+        return QSize(60, kGlyphRows * m_line1DotPx + 2 * kSingleLinePadY);
     return QSize(180, kGlyphRows * (m_line1DotPx + m_line2DotPx) + kLineGapPx + 18);
+}
+
+int DotMatrixDisplay::widthForText(const QString& line1, const QString& line2) const
+{
+    const int line1Px = textDotColumns(sanitize(line1)) * m_line1DotPx;
+    const int line2Px = textDotColumns(sanitize(line2)) * m_line2DotPx;
+    return std::max(line1Px, line2Px) + 2 * kPadX;
 }
 
 int DotMatrixDisplay::line1DotColumns() const
@@ -356,12 +375,13 @@ void DotMatrixDisplay::paintEvent(QPaintEvent*)
     painter.setRenderHint(QPainter::Antialiasing, false);
     const int line1H = kGlyphRows * m_line1DotPx;
     const int line2H = kGlyphRows * m_line2DotPx;
-    const int blockH = line1H + (m_tags.isEmpty() ? 0 : kLineGapPx + line2H);
-    const int top = static_cast<int>(full.top()) + std::max(4, (static_cast<int>(full.height()) - blockH) / 2);
+    const bool showTags = !m_tags.isEmpty() && m_singleLineDotPx == 0;
+    const int blockH = line1H + (showTags ? kLineGapPx + line2H : 0);
+    const int top = static_cast<int>(full.top()) + std::max(m_singleLineDotPx > 0 ? 0 : 4, (static_cast<int>(full.height()) - blockH) / 2);
 
     const QRect line1Area(kPadX, top, width() - 2 * kPadX, line1H);
     paintLcdLine(painter, line1Area, sanitize(m_text), m_line1DotPx, m_marqueeOffset, lamp);
-    if (!m_tags.isEmpty()) {
+    if (showTags) {
         const QRect line2Area(kPadX, top + line1H + kLineGapPx, width() - 2 * kPadX, line2H);
         paintLcdLine(painter, line2Area, sanitize(m_tags), m_line2DotPx, 0, lamp);
     }

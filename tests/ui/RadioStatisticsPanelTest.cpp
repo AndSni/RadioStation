@@ -1,4 +1,5 @@
 #include "ui/RadioStatisticsPanel.h"
+#include "ui/DotMatrixDisplay.h"
 #include "ui/OnAirLabel.h"
 
 #include "audio/AudioEngine.h"
@@ -16,7 +17,6 @@
 #include <QStandardPaths>
 #include <QTest>
 
-#include <algorithm>
 #include <gst/gst.h>
 
 using namespace radio::ui;
@@ -24,16 +24,10 @@ using namespace radio::audio;
 using namespace radio::db;
 
 namespace {
-bool anyLabelHasText(QWidget* parent, const QString& text)
+QString displayText(QWidget* parent, const QString& objectName)
 {
-    const auto labels = parent->findChildren<QLabel*>();
-    return std::any_of(labels.begin(), labels.end(), [&text](QLabel* label) { return label->text() == text; });
-}
-
-bool anyLabelEndsWith(QWidget* parent, const QString& suffix)
-{
-    const auto labels = parent->findChildren<QLabel*>();
-    return std::any_of(labels.begin(), labels.end(), [&suffix](QLabel* label) { return label->text().endsWith(suffix); });
+    auto* display = parent->findChild<DotMatrixDisplay*>(objectName);
+    return display ? display->text() : QString();
 }
 }
 
@@ -82,7 +76,8 @@ void RadioStatisticsPanelTest::showsNoActiveBlockWhenNoneMatch()
     RadioStatisticsPanel panel(&engine);
     panel.show();
 
-    QVERIFY(anyLabelHasText(&panel, QStringLiteral("No active block")));
+    QCOMPARE(displayText(&panel, QStringLiteral("blockNameDisplay")), QStringLiteral("No active block"));
+    QCOMPARE(displayText(&panel, QStringLiteral("blockRemainingDisplay")), QStringLiteral("--:--"));
 
     engine.shutdown();
 }
@@ -106,8 +101,8 @@ void RadioStatisticsPanelTest::showsBlockNameAndRemainingCountdown()
     RadioStatisticsPanel panel(&engine);
     panel.show();
 
-    QVERIFY(anyLabelHasText(&panel, QStringLiteral("Morning Show")));
-    QVERIFY(anyLabelEndsWith(&panel, QStringLiteral(" remaining")));
+    QCOMPARE(displayText(&panel, QStringLiteral("blockNameDisplay")), QStringLiteral("Morning Show"));
+    QVERIFY(displayText(&panel, QStringLiteral("blockRemainingDisplay")).contains(QLatin1Char(':')));
 
     engine.shutdown();
 }
@@ -151,7 +146,7 @@ void RadioStatisticsPanelTest::radioNameReflectsSettingsOnNextTick()
     QSettings settings;
     settings.setValue(QStringLiteral("station/radioName"), QStringLiteral("KKRS"));
 
-    QTRY_VERIFY_WITH_TIMEOUT(anyLabelHasText(&panel, QStringLiteral("KKRS")), 3000);
+    QTRY_COMPARE_WITH_TIMEOUT(displayText(&panel, QStringLiteral("radioNameDisplay")), QStringLiteral("KKRS"), 3000);
 
     engine.shutdown();
 }

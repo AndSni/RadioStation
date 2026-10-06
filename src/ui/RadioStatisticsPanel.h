@@ -12,12 +12,17 @@ class AudioEngine;
 
 namespace radio::ui {
 
+class DotMatrixDisplay;
 class OnAirLabel;
 
 // At-a-glance "what's the station doing right now" strip: an animated
 // ON AIR indicator (see OnAirLabel), the customizable station name, a live
 // clock (custom LCD-style font, static red glow), and the active schedule
-// block's name + time remaining. Font sizing and every color are
+// block's name + time remaining. Station name, block name and remaining time
+// are compact single-line DotMatrixDisplays (the decks' "now playing" panel
+// at its line-2 dot size) with a "Station"/"Playlist"/"Remaining" caption
+// beneath, like the deck's "Duration"; each is sized to fit its text up to a
+// cap (longer text scrolls, as on the decks). Font sizing and every color are
 // user-configurable via StationSettingsDialog (see StationSettings.h for
 // the shared settings keys/defaults) — checked every poll tick AND pushed
 // immediately via StationSettingsDialog::appearanceSettingsChanged() (see
@@ -65,10 +70,10 @@ private:
     radio::audio::AudioEngine* m_engine;
 
     OnAirLabel* m_onAirLabel = nullptr;
-    QLabel* m_radioNameLabel = nullptr;
+    DotMatrixDisplay* m_radioNameDisplay = nullptr;
     QLabel* m_clockLabel = nullptr;
-    QLabel* m_blockNameLabel = nullptr;
-    QLabel* m_blockRemainingLabel = nullptr;
+    DotMatrixDisplay* m_blockNameDisplay = nullptr;
+    DotMatrixDisplay* m_blockRemainingDisplay = nullptr;
     QGraphicsDropShadowEffect* m_clockGlow = nullptr;
 
     QTimer* m_timer = nullptr;

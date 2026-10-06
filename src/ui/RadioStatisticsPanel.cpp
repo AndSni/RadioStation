@@ -1,5 +1,6 @@
 #include "RadioStatisticsPanel.h"
 #include "ConsoleTheme.h"
+#include "DotMatrixDisplay.h"
 #include "OnAirLabel.h"
 #include "StationSettings.h"
 #include "UiStyleHelpers.h"
@@ -45,6 +46,56 @@ QString formatRemaining(qint64 totalSeconds)
     return QStringLiteral("%1:%2").arg(minutes, 2, 10, QLatin1Char('0')).arg(seconds, 2, 10, QLatin1Char('0'));
 }
 
+// Dot size for the station/playlist/remaining displays -- the deck display's
+// default line-2 size, so they read as compact readouts rather than a second
+// row of deck title panels.
+constexpr int kDisplayDotPx = 3;
+
+// Width bounds for those displays. Each is sized to its text between these;
+// anything longer than the cap scrolls, exactly like the deck's title line.
+constexpr int kDisplayMinWidth = 170; // same as the deck's Duration readout
+constexpr int kDisplayMaxWidth = 420;
+
+// Widest value the remaining-time display shows ("H:MM:SS", hours < 24),
+// so it doesn't change width every time the countdown drops a digit.
+const QString kRemainingWidthSample = QStringLiteral("00:00:00");
+
+void fitDisplayWidth(DotMatrixDisplay* display, const QString& text)
+{
+    display->setFixedWidth(std::clamp(display->widthForText(text, QString()), kDisplayMinWidth, kDisplayMaxWidth));
+}
+
+// A compact display with a small caption printed beneath it, the same
+// caption style as LcdReadout's ("Duration" under the deck time).
+DotMatrixDisplay* addCaptionedDisplay(QBoxLayout* row, QWidget* parent, const QString& objectName, const QString& caption)
+{
+    auto* column = new QVBoxLayout();
+    column->setSpacing(1);
+
+    auto* display = new DotMatrixDisplay(parent);
+    display->setObjectName(objectName);
+    display->setSingleLineDotSize(kDisplayDotPx);
+    column->addWidget(display);
+
+    auto* captionLabel = new QLabel(caption, parent);
+    captionLabel->setAlignment(Qt::AlignCenter);
+    QFont captionFont = captionLabel->font();
+    captionFont.setPixelSize(10);
+    captionLabel->setFont(captionFont);
+    captionLabel->setStyleSheet(QStringLiteral("color: %1; background: transparent;").arg(theme::kLcdCaption.name()));
+    column->addWidget(captionLabel);
+    column->addStretch(1); // keep the caption snug under the display when the row is taller (ON AIR)
+
+    row->addLayout(column);
+    return display;
+}
+
+void setDisplayText(DotMatrixDisplay* display, const QString& text)
+{
+    display->setText(text);
+    fitDisplayWidth(display, text);
+}
+
 }
 
 RadioStatisticsPanel::RadioStatisticsPanel(AudioEngine* engine, QWidget* parent)
@@ -68,9 +119,8 @@ RadioStatisticsPanel::RadioStatisticsPanel(AudioEngine* engine, QWidget* parent)
     m_onAirLabel = new OnAirLabel(contentFrame);
     row1->addWidget(m_onAirLabel);
     row1->addStretch(1);
-    m_radioNameLabel = new QLabel(kDefaultRadioName, contentFrame);
-    m_radioNameLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    row1->addWidget(m_radioNameLabel);
+    m_radioNameDisplay = addCaptionedDisplay(row1, contentFrame, QStringLiteral("radioNameDisplay"), QStringLiteral("Station"));
+    setDisplayText(m_radioNameDisplay, kDefaultRadioName);
     layout->addLayout(row1);
 
     // The clock sits on a dark "LCD screen" frame, like every LcdReadout /
@@ -109,12 +159,10 @@ RadioStatisticsPanel::RadioStatisticsPanel(AudioEngine* engine, QWidget* parent)
     layout->addWidget(clockFrame);
 
     auto* row3 = new QHBoxLayout();
-    m_blockNameLabel = new QLabel(contentFrame);
-    row3->addWidget(m_blockNameLabel);
+    m_blockNameDisplay = addCaptionedDisplay(row3, contentFrame, QStringLiteral("blockNameDisplay"), QStringLiteral("Playlist"));
     row3->addStretch(1);
-    m_blockRemainingLabel = new QLabel(QStringLiteral("No active block"), contentFrame);
-    m_blockRemainingLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    row3->addWidget(m_blockRemainingLabel);
+    m_blockRemainingDisplay = addCaptionedDisplay(row3, contentFrame, QStringLiteral("blockRemainingDisplay"), QStringLiteral("Remaining"));
+    fitDisplayWidth(m_blockRemainingDisplay, kRemainingWidthSample);
     layout->addLayout(row3);
 
     m_timer = new QTimer(this);
@@ -148,11 +196,11 @@ void RadioStatisticsPanel::applyFonts()
         clockSize = settings.value(kClockFontPt, kDefaultClockFontPt).toInt();
     }
 
-    for (QLabel* label : std::initializer_list<QLabel*>{ m_onAirLabel, m_radioNameLabel, m_blockNameLabel, m_blockRemainingLabel }) {
-        QFont f = label->font();
-        f.setPointSizeF(smallSize);
-        label->setFont(f);
-    }
+    // The station/playlist/remaining displays are fixed-size compact
+    // DotMatrixDisplays, so only ON AIR follows this size.
+    QFont onAirFont = m_onAirLabel->font();
+    onAirFont.setPointSizeF(smallSize);
+    m_onAirLabel->setFont(onAirFont);
 
     QFont clockFont = m_clockLabel->font();
     clockFont.setPointSizeF(clockSize);
@@ -177,7 +225,7 @@ void RadioStatisticsPanel::refreshAppearanceIfChanged()
     const QString radioName = settings.value(kRadioName, kDefaultRadioName).toString();
     if (radioName != m_lastRadioName) {
         m_lastRadioName = radioName;
-        m_radioNameLabel->setText(radioName);
+        setDisplayText(m_radioNameDisplay, radioName);
     }
 
     const bool autoSize = settings.value(kAutoSizeFonts, kDefaultAutoSizeFonts).toBool();
@@ -214,12 +262,11 @@ void RadioStatisticsPanel::onTick()
         ? std::find_if(blocks.begin(), blocks.end(), [activeId](const auto& block) { return block.id == activeId; })
         : blocks.end();
     if (it == blocks.end()) {
-        m_blockNameLabel->setText(QString());
-        m_blockRemainingLabel->setText(QStringLiteral("No active block"));
+        setDisplayText(m_blockNameDisplay, QStringLiteral("No active block"));
+        m_blockRemainingDisplay->setText(QStringLiteral("--:--"));
     } else {
-        m_blockNameLabel->setText(it->name);
-        m_blockRemainingLabel->setText(
-            QStringLiteral("%1 remaining").arg(formatRemaining(BlockTimeResolver::secondsRemainingInBlock(*it, now))));
+        setDisplayText(m_blockNameDisplay, it->name);
+        m_blockRemainingDisplay->setText(formatRemaining(BlockTimeResolver::secondsRemainingInBlock(*it, now)));
     }
 
     const bool onAir
