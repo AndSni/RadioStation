@@ -15,6 +15,11 @@ adheres to [Semantic Versioning](https://semver.org/).
   Each display widens to fit its text; longer names scroll. The Station
   Settings small-font size now applies to the ON AIR badge only.
 
+### Fixed
+
+- **library_cleanup tool**: a crashed cleanup stage's traceback is now
+  captured and written to `cleanup.log` instead of being discarded.
+
 ## [0.1] – 2026-09-01
 
 First public release.
